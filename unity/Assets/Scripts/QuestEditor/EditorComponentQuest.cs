@@ -8,7 +8,6 @@ using System.IO;
 public class EditorComponentQuest : EditorComponent
 {
     private readonly StringKey HIDDEN = new StringKey("val", "HIDDEN");
-    private readonly StringKey ACTIVE = new StringKey("val", "ACTIVE");
     private readonly StringKey SELECT_PACK = new StringKey("val", "SELECT_PACK");
     private readonly StringKey REQUIRED_EXPANSIONS = new StringKey("val", "REQUIRED_EXPANSIONS");
 

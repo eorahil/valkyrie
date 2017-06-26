@@ -365,7 +365,7 @@ public class EditorComponentEvent : EditorComponent
 
         ui = new UIElement(Game.EDITOR, scrollArea.GetScrollTransform());
         ui.SetLocation(0, offset, 8, 1);
-        ui.SetText(new StringKey("val", "X_COLON", new StringKey("val", "NEXT_EVENTS")));
+        ui.SetText(new StringKey("val", "X_COLON", NEXT_EVENTS));
 
         string randomButton = "Ordered";
         if (eventComponent.randomEvents) randomButton = "Random";
@@ -730,7 +730,7 @@ public class EditorComponentEvent : EditorComponent
         }
 
         traits = new Dictionary<string, IEnumerable<string>>();
-        traits.Add(new StringKey("val", "TYPE").Translate(), new string[] { new StringKey("val", "VARS").Translate() });
+        traits.Add(new StringKey("val", "TYPE").Translate(), new string[] { VARS.Translate() });
 
         foreach (string s in vars)
         {
