@@ -75,11 +75,12 @@ public class EditorComponentQuest : EditorComponent
         ui.SetText(new StringKey("val", "X_COLON", new StringKey("val", "DESCRIPTION")));
 
         descriptionUIE = new UIElementEditablePaneled(Game.EDITOR, scrollArea.GetScrollTransform());
-        descriptionUIE.SetLocation(0.5f, offset, 19, 10);
+        descriptionUIE.SetLocation(0.5f, offset, 19, 30);
         descriptionUIE.SetText(game.quest.qd.quest.description.Translate(true));
+        offset += descriptionUIE.HeightToTextPadding(1);
         descriptionUIE.SetButton(delegate { UpdateQuestDesc(); });
         new UIElementBorder(descriptionUIE);
-        offset += 11;
+        offset += 1;
 
         ui = new UIElement(Game.EDITOR, scrollArea.GetScrollTransform());
         ui.SetLocation(0, offset++, 8, 1);
@@ -87,11 +88,12 @@ public class EditorComponentQuest : EditorComponent
 
 
         authorsUIE = new UIElementEditablePaneled(Game.EDITOR, scrollArea.GetScrollTransform());
-        authorsUIE.SetLocation(0.5f, offset, 19, 6);
+        authorsUIE.SetLocation(0.5f, offset, 19, 16);
         authorsUIE.SetText(game.quest.qd.quest.authors.Translate(true));
+        offset += authorsUIE.HeightToTextPadding(1);
         authorsUIE.SetButton(delegate { UpdateQuestAuth(); });
         new UIElementBorder(authorsUIE);
-        offset += 7;
+        offset += 1;
 
         ui = new UIElement(Game.EDITOR, scrollArea.GetScrollTransform());
         ui.SetLocation(0.5f, offset, 10, 1);
@@ -253,6 +255,10 @@ public class EditorComponentQuest : EditorComponent
             {
                 LocalizationRead.updateScenarioText(game.quest.qd.quest.description_key, descriptionUIE.GetText());
             }
+            if (!descriptionUIE.HeightAtTextPadding(1))
+            {
+                Update();
+            }
         }
     }
 
@@ -267,6 +273,10 @@ public class EditorComponentQuest : EditorComponent
             else
             {
                 LocalizationRead.updateScenarioText(game.quest.qd.quest.authors_key, authorsUIE.GetText());
+            }
+            if (!authorsUIE.HeightAtTextPadding(1))
+            {
+                Update();
             }
         }
     }

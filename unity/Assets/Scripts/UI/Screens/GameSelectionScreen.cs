@@ -2,6 +2,7 @@
 using UnityEngine;
 using FFGAppImport;
 using System.Threading;
+using System.IO;
 
 namespace Assets.Scripts.UI.Screens
 {
@@ -12,14 +13,17 @@ namespace Assets.Scripts.UI.Screens
     {
         FFGImport fcD2E;
         FFGImport fcMoM;
+        protected string importType = "";
         Thread importThread;
 
         private StringKey D2E_NAME = new StringKey("val","D2E_NAME");
         private StringKey CONTENT_IMPORT = new StringKey("val", "CONTENT_IMPORT");
         private StringKey CONTENT_REIMPORT = new StringKey("val", "CONTENT_REIMPORT");
         private StringKey D2E_APP_NOT_FOUND = new StringKey("val", "D2E_APP_NOT_FOUND");
+        private StringKey D2E_APP_NOT_FOUND_ANDROID = new StringKey("val", "D2E_APP_NOT_FOUND_ANDROID");
         private StringKey MOM_NAME = new StringKey("val", "MOM_NAME");
         private StringKey MOM_APP_NOT_FOUND = new StringKey("val", "MOM_APP_NOT_FOUND");
+        private StringKey MOM_APP_NOT_FOUND_ANDROID = new StringKey("val", "MOM_APP_NOT_FOUND_ANDROID");
         private StringKey CONTENT_IMPORTING = new StringKey("val", "CONTENT_IMPORTING");
 
         // Create a menu which will take up the whole screen and have options.  All items are dialog for destruction.
@@ -107,7 +111,14 @@ namespace Assets.Scripts.UI.Screens
             else // Import unavailable
             {
                 ui.SetLocation((UIScaler.GetWidthUnits() - 24) / 2, 14.2f, 24, 1);
-                ui.SetText(D2E_APP_NOT_FOUND, Color.red);
+                if (Application.platform == RuntimePlatform.Android)
+                {
+                    ui.SetText(D2E_APP_NOT_FOUND_ANDROID, Color.red);
+                }
+                else
+                {
+                    ui.SetText(D2E_APP_NOT_FOUND, Color.red);
+                }
                 new UIElementBorder(ui, Color.red);
             }
 
@@ -140,7 +151,14 @@ namespace Assets.Scripts.UI.Screens
             else // Import unavailable
             {
                 ui.SetLocation((UIScaler.GetWidthUnits() - 24) / 2, 23.2f, 24, 1);
-                ui.SetText(MOM_APP_NOT_FOUND, Color.red);
+                if (Application.platform == RuntimePlatform.Android)
+                {
+                    ui.SetText(MOM_APP_NOT_FOUND_ANDROID, Color.red);
+                }
+                else
+                {
+                    ui.SetText(MOM_APP_NOT_FOUND, Color.red);
+                }
                 new UIElementBorder(ui, Color.red);
             }
 
@@ -172,28 +190,9 @@ namespace Assets.Scripts.UI.Screens
         {
             Destroyer.Destroy();
 
-            // Create an object
-            GameObject logo = new GameObject("logo");
-            // Mark it as dialog
-            logo.tag = Game.DIALOG;
-            logo.transform.SetParent(Game.Get().uICanvas.transform);
+            new LoadingScreen(CONTENT_IMPORTING.Translate());
+            importType = type;
 
-            RectTransform transBg = logo.AddComponent<RectTransform>();
-            transBg.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Left, UIScaler.GetHCenter(-3) * UIScaler.GetPixelsPerUnit(), 6 * UIScaler.GetPixelsPerUnit());
-            transBg.SetInsetAndSizeFromParentEdge(RectTransform.Edge.Top, 8 * UIScaler.GetPixelsPerUnit(), 6 * UIScaler.GetPixelsPerUnit());
-
-            // Create the image
-            Texture2D tex = Resources.Load("sprites/logo") as Texture2D;
-            Sprite sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), Vector2.zero, 1);
-            UnityEngine.UI.Image uiImage = logo.AddComponent<UnityEngine.UI.Image>();
-            uiImage.sprite = sprite;
-            logo.AddComponent<SpritePulser>();
-
-            // Display message
-            UIElement ui = new UIElement();
-            ui.SetLocation(2, 20, UIScaler.GetWidthUnits() - 4, 2);
-            ui.SetText(CONTENT_IMPORTING);
-            ui.SetFontSize(UIScaler.GetMediumFont());
             if (type.Equals("D2E"))
             {
                 importThread = new Thread(new ThreadStart(delegate { fcD2E.Import(); }));
@@ -203,7 +202,6 @@ namespace Assets.Scripts.UI.Screens
                 importThread = new Thread(new ThreadStart(delegate { fcMoM.Import(); }));
             }
             importThread.Start();
-            //while (!importThread.IsAlive) ;
         }
 
         // Start game as MoM
@@ -232,18 +230,20 @@ namespace Assets.Scripts.UI.Screens
             // After content import, we load the localization file
             if (LocalizationRead.selectDictionary("ffg") == null)
             {
-                // FFG default language is always English
-                LocalizationRead.AddDictionary("ffg", new DictionaryI18n(
-                    System.IO.File.ReadAllLines(ContentData.ImportPath() + "/text/Localization.txt"),
-                    DictionaryI18n.DEFAULT_LANG,
-                    Game.Get().currentLang));
-
-                // Hack for Dunwich Horror
-                if (System.IO.File.Exists(ContentData.ImportPath() + "/text/SCENARIO_CULT_OF_SENTINEL_HILL_MAD22.txt"))
+                DictionaryI18n ffgDict = new DictionaryI18n();
+                foreach (string file in Directory.GetFiles(ContentData.ImportPath() + "/text", "Localization*.txt"))
                 {
-                    LocalizationRead.selectDictionary("ffg").Add(new DictionaryI18n(System.IO.File.ReadAllLines(ContentData.ImportPath() + "/text/SCENARIO_CULT_OF_SENTINEL_HILL_MAD22.txt"),
-                        DictionaryI18n.DEFAULT_LANG, Game.Get().currentLang));
+                    ffgDict.AddDataFromFile(file);
                 }
+                LocalizationRead.AddDictionary("ffg", ffgDict);
+
+                // CoSH used for Dunwich Horror data
+                DictionaryI18n cshDict = new DictionaryI18n();
+                foreach (string file in Directory.GetFiles(ContentData.ImportPath() + "/text", "SCENARIO_CULT_OF_SENTINEL_HILL_MAD22_*.txt"))
+                {
+                    cshDict.AddDataFromFile(file);
+                }
+                LocalizationRead.AddDictionary("csh", cshDict);
             }
         }
 
@@ -252,7 +252,31 @@ namespace Assets.Scripts.UI.Screens
             if (importThread == null) return;
             if (importThread.IsAlive) return;
             importThread = null;
+            ExtractBundles();
             Draw();
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public void ExtractBundles()
+        {
+            try
+            {
+                string[] bundles = File.ReadAllLines(Game.AppData() + "/" + importType + "/import/bundles.txt");
+                foreach (string file in bundles)
+                {
+                    AssetBundle bundle = AssetBundle.LoadFromFile(file);
+                    if (bundle == null) continue;
+                    string id = Path.GetFileNameWithoutExtension(file);
+                    foreach (TextAsset asset in bundle.LoadAllAssets<TextAsset>())
+                    {
+                        File.WriteAllText(Game.AppData() + "/" + importType + "/import/text/" + asset.name + ".txt", asset.ToString());
+                    }
+                }
+            }
+            catch (System.Exception) { }
+            importType = "";
         }
 
         // Exit Valkyrie

@@ -5,6 +5,7 @@ using Assets.Scripts.Content;
 using Assets.Scripts.UI.Screens;
 using Assets.Scripts.UI;
 using ValkyrieTools;
+using Ionic.Zip;
 
 // General controller for the game
 // There is one object of this class and it is used to find most game components
@@ -66,6 +67,9 @@ public class Game : MonoBehaviour {
     // Quest started as test from editor
     public bool testMode = false;
 
+    // List of things that want to know if the mouse is clicked
+    protected List<IUpdateListener> updateList;
+
     // Import thread
     public GameSelectionScreen gameSelect;
 
@@ -103,25 +107,38 @@ public class Game : MonoBehaviour {
         config = new ConfigFile();
         GameObject go = new GameObject("audio");
         audioControl = go.AddComponent<Audio>();
+        updateList = new List<IUpdateListener>();
 
         if (config.data.Get("UserConfig") == null)
         {
             // English is the default current language
-            config.data.Add("UserConfig", "currentLang", DictionaryI18n.DEFAULT_LANG);
+            config.data.Add("UserConfig", "currentLang", "English");
             config.Save();
         }
         currentLang = config.data.Get("UserConfig", "currentLang");
 
-        try
+        // On android extract streaming assets for use
+        if (Application.platform == RuntimePlatform.Android)
         {
-            TextAsset localizationFile = Resources.Load("Text/Localization") as TextAsset;
-            LocalizationRead.AddDictionary("val", LocalizationRead.ReadFromTextAsset(localizationFile, currentLang));
-            LocalizationRead.changeCurrentLangTo(currentLang);
+            System.IO.Directory.CreateDirectory(ContentData.ContentPath());
+            using (ZipFile jar = ZipFile.Read(Application.dataPath))
+            {
+                foreach (ZipEntry e in jar)
+                {
+                    if (e.FileName.IndexOf("assets") != 0) continue;
+                    if (e.FileName.IndexOf("assets/bin") == 0) continue;
+
+                    e.Extract(ContentData.ContentPath() + "../..", ExtractExistingFileAction.OverwriteSilently);
+                }
+            }
         }
-        catch (System.Exception e)
+
+        DictionaryI18n valDict = new DictionaryI18n();
+        foreach (string file in System.IO.Directory.GetFiles(ContentData.ContentPath() + "../text", "Localization*.txt"))
         {
-            ValkyrieDebug.Log("Error loading valkyrie localization file:" + e.Message);
+            valDict.AddDataFromFile(file);
         }
+        LocalizationRead.AddDictionary("val", valDict);
 
         roundControl = new RoundController();
 
@@ -276,6 +293,23 @@ public class Game : MonoBehaviour {
     //  This is here because the editor doesn't get an update, so we are passing through mouse clicks to the editor
     void Update()
     {
+        updateList.RemoveAll(delegate (IUpdateListener o) { return o == null; });
+        for(int i = 0; i < updateList.Count; i++)
+        {
+            if (!updateList[i].Update())
+            {
+                updateList[i] = null;
+            }
+        }
+        updateList.RemoveAll(delegate (IUpdateListener o) { return o == null; });
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            foreach(IUpdateListener iul in updateList)
+            {
+                iul.Click();
+            }
+        }
         // 0 is the left mouse button
         if (qed != null && Input.GetMouseButtonDown(0))
         {
@@ -342,4 +376,23 @@ public class Game : MonoBehaviour {
         }
         return System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData) + "/Valkyrie";
     }
+
+    public void AddUpdateListener(IUpdateListener obj)
+    {
+        updateList.Add(obj);
+    }
+}
+
+public interface IUpdateListener
+{
+    /// <summary>
+    /// This method is called on click
+    /// </summary>
+    void Click();
+
+    /// <summary>
+    /// This method is called on Unity Update.  Must return false to allow garbage collection.
+    /// </summary>
+    /// <returns>True to keep this in the update list, false to remove.</returns>
+    bool Update();
 }
