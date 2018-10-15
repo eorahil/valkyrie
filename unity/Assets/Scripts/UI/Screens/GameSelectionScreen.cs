@@ -49,21 +49,21 @@ namespace Assets.Scripts.UI.Screens
             // Get the current content for games
             if (Application.platform == RuntimePlatform.OSXPlayer)
             {
-                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.MacOS, Game.AppData() + "/", Application.isEditor);
-                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.MacOS, Game.AppData() + "/", Application.isEditor);
-                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.MacOS, Game.AppData() + "/", Application.isEditor);
+                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.MacOS, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.MacOS, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.MacOS, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
             }
             else if (Application.platform == RuntimePlatform.Android)
             {
-                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.Android, Game.AppData() + "/", Application.isEditor);
-                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.Android, Game.AppData() + "/", Application.isEditor);
-                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.Android, Game.AppData() + "/", Application.isEditor);
+                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.Android, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.Android, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.Android, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
             }
             else
             {
-                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.Windows, Game.AppData() + "/", Application.isEditor);
-                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.Windows, Game.AppData() + "/", Application.isEditor);
-                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.Windows, Game.AppData() + "/", Application.isEditor);
+                fcD2E = new FFGImport(FFGAppImport.GameType.D2E, Platform.Windows, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcMoM = new FFGImport(FFGAppImport.GameType.MoM, Platform.Windows, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
+                fcIA = new FFGImport(FFGAppImport.GameType.IA, Platform.Windows, Game.AppData() + Path.DirectorySeparatorChar, Application.isEditor);
             }
 
             fcD2E.Inspect();
@@ -177,11 +177,13 @@ namespace Assets.Scripts.UI.Screens
             {
                 startColor = Color.gray;
             }
+            // Always disabled
+            startColor = Color.gray;
             ui = new UIElement();
             ui.SetLocation((UIScaler.GetWidthUnits() - 30) / 2, 21, 30, 3);
             ui.SetText(IA_NAME, startColor);
             ui.SetFontSize(UIScaler.GetMediumFont());
-            ui.SetButton(delegate { IA(); });
+            //ui.SetButton(delegate { IA(); });
             ui.SetBGColor(new Color(0, 0.03f, 0f));
             new UIElementBorder(ui, startColor);
 
@@ -218,6 +220,9 @@ namespace Assets.Scripts.UI.Screens
             ui.SetButton(Exit);
             ui.SetBGColor(new Color(0, 0.03f, 0f));
             new UIElementBorder(ui, Color.red);
+
+            // will display a button if a new version is available
+            VersionManager.GetLatestVersionAsync(CheckForNewValkyrieVersion);
         }
 
         // Start game as D2E
@@ -277,7 +282,7 @@ namespace Assets.Scripts.UI.Screens
         public void IA()
         {
             // Not working yet
-            return;
+#if false
             // Check if import neeeded
             if (!fcIA.NeedImport())
             {
@@ -285,6 +290,7 @@ namespace Assets.Scripts.UI.Screens
                 loadLocalization();
                 Destroyer.MainMenu();
             }
+#endif
         }
 
         /// <summary>
@@ -298,7 +304,7 @@ namespace Assets.Scripts.UI.Screens
             if (LocalizationRead.selectDictionary("ffg") == null)
             {
                 DictionaryI18n ffgDict = new DictionaryI18n();
-                foreach (string file in Directory.GetFiles(ContentData.ImportPath() + "/text", "Localization*.txt"))
+                foreach (string file in Directory.GetFiles(ContentData.ImportPath() + "/text", "Localization_*.txt"))
                 {
                     ffgDict.AddDataFromFile(file);
                 }
@@ -362,5 +368,33 @@ namespace Assets.Scripts.UI.Screens
         {
             Application.Quit();
         }
+
+        // Open link to releases and quit Valkyrie
+        public void GotoValkyrieVersion()
+        {
+            Application.OpenURL( VersionManager.GetlatestReleaseURL() );
+
+            Application.Quit();
+        }
+        
+        public void CheckForNewValkyrieVersion()
+        {
+            StringKey NEW_VERSION_AVAILABLE = new StringKey("val", "NEW_VERSION_AVAILABLE");
+
+            if ( VersionManager.VersionNewer(Game.Get().version, VersionManager.online_version) )
+            {
+                float string_width = 0f;
+                UIElement ui = new UIElement();
+                ui.SetText(NEW_VERSION_AVAILABLE, Color.green);
+                string_width = ui.GetStringWidth(NEW_VERSION_AVAILABLE, UIScaler.GetMediumFont());
+                ui.SetLocation(UIScaler.GetRight() - 3 - string_width, UIScaler.GetBottom(-3), string_width + 2, 2);
+                ui.SetText(NEW_VERSION_AVAILABLE, Color.green);
+                ui.SetFontSize(UIScaler.GetMediumFont());
+                ui.SetButton(GotoValkyrieVersion);
+                ui.SetBGColor(new Color(0, 0.03f, 0f));
+                new UIElementBorder(ui, Color.green);
+            }
+        }
+
     }
 }
